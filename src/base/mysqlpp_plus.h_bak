@@ -1,0 +1,76 @@
+#ifndef _BASE_MYSQLPP_PLUS_H_
+#define _BASE_MYSQLPP_PLUS_H_
+
+#include <string>
+#include <atomic>
+#include <map>
+#include <mysql++.h>
+
+#include "base/macro.hpp"
+// Forward declarations start.
+
+// Forward declarations end.
+
+namespace base {
+
+
+class DBPool: public mysqlpp::ConnectionPool {
+public:
+	DBPool(const std::string &host, const std::string &dbname, const std::string &user, const std::string &password, const std::string &charset, const bool &autoCommit);
+	virtual ~DBPool();
+	virtual mysqlpp::Connection* grab() override;
+	virtual void release(const mysqlpp::Connection *pc) override;
+
+	std::string getCharset() {
+		return charset_;
+	}
+	bool getAutoCommit() {
+		return autoCommit_;
+	}
+protected:
+	virtual mysqlpp::Connection *create() override;
+	virtual void destroy(mysqlpp::Connection *pc) override;
+	virtual unsigned int max_idle_time() override;
+private:
+	unsigned int connsInUse_;
+	std::string host_, dbname_, user_, password_, charset_;
+	bool autoCommit_;
+	static constexpr unsigned int MAX_CONNS_IN_USE = 8;
+	static constexpr unsigned int MAX_IDLE_TIME = 10;
+};
+///////////////////////////////////////////////////////////////////////////////
+class MysqlppPlus {
+public:
+	static MysqlppPlus &getInstance() {
+		static MysqlppPlus sMysqlppPlus;
+		return sMysqlppPlus;
+	}
+	static std::shared_ptr<mysqlpp::Connection> getConnection(const std::string &dbId);
+
+	static std::shared_ptr<mysqlpp::Connection> getConnection();
+
+	void addPool(const std::string &dbId, DBPool *dbPool);
+
+	DBPool *getPool(const std::string &dbId);
+
+	DISALLOW_COPY_AND_ASSIGN(MysqlppPlus);
+
+	MysqlppPlus() = default;
+
+	~MysqlppPlus() {
+		for (auto &i : poolMap_) {
+			delete i.second;
+		}
+	}
+
+private:
+	std::map<std::string, DBPool *> poolMap_;
+	std::string defDbId_;
+};
+
+
+
+}/* base */
+
+	
+#endif /* end of include guard: _BASE_MYSQLPP_PLUS_H_ */

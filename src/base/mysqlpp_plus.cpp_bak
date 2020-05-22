@@ -1,0 +1,79 @@
+#include "base/mysqlpp_plus.h"
+
+#include <unistd.h>
+#include <iostream>
+#include <memory>
+
+#include "base/log.h"
+
+namespace base {
+
+
+DBPool::DBPool(const std::string &host, const std::string &dbname, const std::string &user, const std::string &password, const std::string &charset, const bool &autoCommit):
+		connsInUse_(0), host_(host), dbname_(dbname), user_(user),
+		password_(password), charset_(charset), autoCommit_(autoCommit) {
+	log_trace("DBPool constructor");
+	log_trace("\nhost={0}\ndbname={1}\nuser={2}\ncharset={3}\nautoCommit={4}",
+			host_, dbname_, user_, charset_, autoCommit_);
+	
+}
+DBPool::~DBPool() {
+	clear();
+	log_trace("DBPool deconstructor");
+}
+mysqlpp::Connection *DBPool::grab() {
+	while (connsInUse_ > MAX_CONNS_IN_USE) {
+		//log_warn("Connections equal {0}, wait for release.", MAX_CONNS_IN_USE); // indicate waiting for release
+		sleep(1);
+	}
+	++connsInUse_;
+	return mysqlpp::ConnectionPool::grab();
+}
+void DBPool::release(const mysqlpp::Connection *pc) {
+	mysqlpp::ConnectionPool::release(pc);
+	--connsInUse_;
+}
+
+mysqlpp::Connection *DBPool::create() {
+	return new mysqlpp::Connection(dbname_.c_str(), host_.c_str(),
+				user_.c_str(), password_.c_str());
+}
+void DBPool::destroy(mysqlpp::Connection *pc) {
+	delete pc;
+}
+unsigned int DBPool::max_idle_time() {
+	return MAX_IDLE_TIME;
+}
+//////////////////////////////////////////////////////////////////////////
+
+inline std::shared_ptr<mysqlpp::Connection> MysqlppPlus::getConnection(const std::string &dbId) {
+	DBPool *pool = MysqlppPlus::getInstance().getPool(dbId);
+	mysqlpp::Connection *connection = pool->grab();
+	return std::shared_ptr<mysqlpp::Connection>(connection, [&pool](mysqlpp::Connection *connection) { pool->release(connection); });
+}
+
+inline std::shared_ptr<mysqlpp::Connection> MysqlppPlus::getConnection() {
+	return getConnection(MysqlppPlus::getInstance().defDbId_);
+}
+
+void MysqlppPlus::addPool(const std::string &dbId, DBPool *dbPool) {
+	auto iter =	poolMap_.find(dbId);
+	if (iter != poolMap_.end()) {
+		delete iter->second;
+	}
+	poolMap_[dbId] = dbPool;
+	if (defDbId_.empty()) {
+		defDbId_ = dbId;
+	}
+}
+	
+DBPool *MysqlppPlus::getPool(const std::string &dbId) {
+	auto iter =	poolMap_.find(dbId);
+	if (iter != poolMap_.end()) {
+		return iter->second;
+	}
+	return nullptr;
+}
+
+
+} /* base */ 

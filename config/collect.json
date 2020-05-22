@@ -1,0 +1,66 @@
+{
+  /*ehhehe
+  ddd
+  aaa
+  */
+  "run_type": "COLLECT",//
+  //运行类型，`BACKTEST` 为回测，`SIM` 为模拟交易, `REAL` 为实盘交易，`COLLECT`为收集数据。
+  "start_date": "2017-11-20",
+  "future_starting_cash": 1000000,
+  //	"margin_multiplier": 1,
+  //	"available_cpu_num": 2,
+  /*ehhehe*/
+  "ctp": {
+    "event": {
+      "broker_id": "5010",
+      "user_id": "809010118",
+      "password": "kkk123321.1!",
+//      "address": "tcp://180.168.146.187:10031"//24hours
+      //			"address": "tcp://180.168.146.187:10010",//dianxin1
+     // "address": "tcp://180.168.146.187:10011"
+      "address": "tcp://shdx-ctp1.gjqh.com.cn:11213"
+    },
+    "trade": {
+      //run_type=collect时生效
+      "broker_id": "5010",
+      "user_id": "809010118",
+      "password": "kkk123321.1!",
+//      "address": "tcp://180.168.146.187:10030",//24hours
+      //			"address": "tcp://180.168.146.187:10000",//dianxin1
+     // "address": "tcp://180.168.146.187:10001",
+      "address": "tcp://shdx-ctp1.gjqh.com.cn:11205",
+      "pub_resume_type": "restart", //restart, resume, quick
+      "priv_resume_type": "restart" //restart, resume, quick
+    }
+  },
+  "logger": {
+    "level": "trace",
+    "base_dir": "./log",
+    "def_name": "default",
+    "async_size": 4096,
+    "console_flag": true
+  },
+  "redis": {
+    ////		"pool_id": "txndb",
+    "host": "localhost",
+    "port": 6379,
+    "password": "",
+    "db": 1
+  },
+  "stgys": [
+    {
+      "stgy_type": "collect",
+      "stgy_id": "collect",
+      "version": "20171226",
+      //"collect_pattern": "TF|RB|ZC|PP|JM|RM",
+      "log_level": "warn",
+      //"frequencies": ["tick", "1m", "1d"],
+      "frequencies": ["tick", "1m", "5m", "15m", "30m", "60m", "1d"],
+      "topic": "test",
+      "thread_num": 6,
+      "just_log": false
+    }
+  ]
+  //test
+}
+

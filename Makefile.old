@@ -1,0 +1,214 @@
+#++++++++++++++++++++++++++ 发行版/调试版 ++++++++++++++++++++++++++
+#DEBUG_FLAG=1 #注释该行则切换到发行版，否则是调试版本
+LIB_FLAG=1 #注释该行则编译成可执行版本，否则是动态链接库版本
+#GBK=1 #注释改行则编译成utf-8字符集的可执行版本，否则是gbk版本
+
+ifeq ($(findstring test, $(MAKECMDGOALS)), test)
+TEST_FLAG=1
+endif
+#++++++++++++++++++++++++++ 数据库类型 +++++++++++++++++++++++++++++
+#DBTYPE=ORACLEDB
+#DBTYPE=MYSQLDB
+
+################################ LINUX #######################################
+CXX=g++
+
+CXXRFLAG= #-DNDEBUG
+CXXDFLAG=-g -ggdb -DDEBUG
+CXXFLAG=-c -std=c++11 -DLINUX -Wall -Wno-format -fPIC
+CXXFLAG:=$(CXXFLAG) ${if $(GBK),-fexec-charset=GBK,}
+CXXFLAG:=$(CXXFLAG) ${if $(DEBUG_FLAG),$(CXXDFLAG),$(CXXRFLAG)}
+CXXFLAG:=$(CXXFLAG) ${if $(TEST_FLAG),--define VTEST,}
+
+LDRFLAG=-O3
+LDDFLAG=# -g -ggdb
+LDFLAG=-flto -rdynamic -fPIC -DPIC -D_REENTRANT ${if $(DEBUG_FLAG),$(LDDFLAG),$(LDRFLAG)}
+
+DEPFLAG=-std=c++11 -MM -MD
+
+BUILDSYMBOL=
+EXSTUFF=
+
+MAKE_DIR=.
+SRC_DIR=$(MAKE_DIR)/src
+EXTRA_DIR=$(MAKE_DIR)/extra
+PORTAL_DIR=$(EXTRA_DIR)/portal
+LIB_DIR=$(MAKE_DIR)/lib
+PY_DIR=$(MAKE_DIR)/pyiqt
+CONF_DIR=$(MAKE_DIR)/config
+INCLUDE_DIR=$(MAKE_DIR)/include
+OBJ_TEST_DIR=$(MAKE_DIR)/obj_test
+ifeq ($(TEST_FLAG), 1)
+TEST_DIR=$(MAKE_DIR)/test
+OBJ_DIR=$(OBJ_TEST_DIR)
+#$(warning "OBJ_DIR=$(OBJ_DIR)")
+else
+OBJ_DIR=$(MAKE_DIR)/obj
+endif
+EXEC_DIR=$(MAKE_DIR)/${if $(DEBUG_FLAG),debug,release}
+#OBJ_DIR=$(EXEC_DIR)/obj
+LOG_DIR=$(MAKE_DIR)/log
+RES_DIR=$(MAKE_DIR)/Response
+LIBUV_DIR=$(MAKE_DIR)/third-party/libuv
+MYSQLPP_DIR=$(MAKE_DIR)/third-party/mysql++-3.2.3
+
+ifeq ($(TEST_FLAG), 1)
+TEST_DIR=$(MAKE_DIR)/test
+GTEST_DIR=$(MAKE_DIR)/third-party/googletest/googletest
+GMOCK_DIR=$(MAKE_DIR)/third-party/googletest/googlemock
+endif
+
+INCLUDE=-I$(INCLUDE_DIR) -I$(SRC_DIR) -I$(EXTRA_DIR)
+INCLUDE:=$(INCLUDE) ${if $(TEST_FLAG), -I$(TEST_DIR) -I$(GTEST_DIR)/include -I$(GMOCK_DIR)/include,}
+#INCLUDE:=$(INCLUDE) -I$(LIBUV_DIR)/include
+#INCLUDE:=$(INCLUDE) -I$(MYSQLPP_DIR)/lib -I/usr/include/mysql
+LIB=-L$(LIB_DIR)
+ifneq ($(TEST_FLAG), 1)
+LIB:=$(LIB) ${if $(LIB_FLAG),-shared,}
+endif
+#LIB:=$(LIB) ${if $(DEBUG_FLAG),-ltbb_debug -ltbbmalloc_debug,-ltbb -ltbbmalloc}
+LIB:=$(LIB) -lthostmduserapi -lthosttraderapi
+#LIB:=$(LIB) -luv
+#LIB:=$(LIB) -lmysqlpp
+LIB:=$(LIB) -lhiredis
+
+ifeq ($(TEST_FLAG), 1)
+LIB:=$(LIB) $(LIB_DIR)/gmock_main.a
+endif
+LIB:=$(LIB) -lpthread
+
+PROJ_NAME=iqt
+TAR_NAME=$(PROJ_NAME).tar.gz
+EXEC=${if $(LIB_FLAG),$(MAKE_DIR)/lib$(PROJ_NAME).so,$(EXEC_DIR)/$(PROJ_NAME)}
+PORTAL_EXEC=$(PY_DIR)/portal_$(PROJ_NAME).so
+EXEC_TEST=$(EXEC_DIR)/$(PROJ_NAME)_test
+
+#这里递归遍历5级子目录
+SRC_DIRS := $(shell find $(SRC_DIR) -maxdepth 5 -type d)
+#$(warning "SRC_DIRS=$(SRC_DIRS)")
+
+PORTAL_DIRS := $(shell find $(PORTAL_DIR) -maxdepth 5 -type d)
+#$(warning "SRC_DIRS=$(SRC_DIRS)")
+vpath %.h $(INCLUDE_DIR)
+vpath %.cpp $(SRC_DIRS)
+vpath %.cpp $(PORTAL_DIRS)
+vpath %.o $(OBJ_DIR)
+vpath %.opy $(OBJ_DIR)
+vpath %.d $(OBJ_DIR)
+vpath %.dpy $(OBJ_DIR)
+
+SRC_TMP:=$(foreach dir,$(SRC_DIRS),$(wildcard $(dir)/*.cpp))
+
+PORTAL_TMP:=$(foreach dir,$(PORTAL_DIRS),$(wildcard $(dir)/*.cpp))
+
+#$(warning "SRC_TMP=$(SRC_TMP)")
+CXX_SRCS:=$(notdir $(SRC_TMP))
+#$(warning "CXX_SRCS=$(CXX_SRCS)")
+
+PORTAL_CXX_SRCS:=$(notdir $(PORTAL_TMP))
+#$(warning "CXX_SRCS=$(CXX_SRCS)")
+
+ifeq ($(TEST_FLAG), 1)
+CXX_SRCS:=$(filter-out main.cpp, $(CXX_SRCS))
+#$(warning "CXX_SRCS=$(SRC_DIRS)")
+
+TEST_DIRS:=$(shell find $(TEST_DIR) -maxdepth 5 -type d)
+vpath %.cpp $(TEST_DIRS)
+TEST_TMP:=$(foreach dir,$(TEST_DIRS),$(wildcard $(dir)/*.cpp))
+CXX_SRCS:=$(CXX_SRCS) $(notdir $(TEST_TMP))
+#$(warning "CXX_SRCS=$(SRC_DIRS)")
+endif
+
+CXX_OBJS:=$(patsubst %.cpp,%.o,$(CXX_SRCS))
+#$(warning "CXX_OBJS=$(CXX_OBJS)")
+
+PORTAL_CXX_OBJS:=$(patsubst %.cpp,%.opy,$(PORTAL_CXX_SRCS))
+#$(warning "PORTAL_CXX_OBJS=$(PORTAL_CXX_OBJS)")
+CXX_DEPS:=$(patsubst %.cpp,%.d,$(CXX_SRCS))
+
+PORTAL_CXX_DEPS:=$(patsubst %.cpp,%.dpy,$(PORTAL_CXX_SRCS))
+
+############################# 编译 ############################
+#-include $(addprefix $(OBJ_DIR),$(C_DEPS))
+#
+## 注意：这一句不可以放在前面！why？因为我们make的时候直接就是make
+# 如果放在前面，那么会先处理这个.d文件的生成！那么下面的目标：依赖
+# # 就会执行，那么又因为makefile默认第一个目标是终极目标！那么此处就
+# # 没有办法执行到all这个地方，就直接在下面的“假的终极目标”处结束了！
+# # 所以如果这样做我们只能是make all是可以的！所以为了确保！我们都要注意！
+# # 在终极目标之前，不可以有其他的目标！( 包括像这样的展开之后引起的目标！ )
+
+
+all: config $(EXEC) $(PORTAL_EXEC)
+
+$(EXEC): $(CXX_OBJS)
+	@echo 'start building  $(notdir $@) ...'
+	$(BUILDSYMBOL)
+	$(CXX) $(LDFLAG) $(addprefix $(OBJ_DIR)/,$(notdir $^)) $(EXSTUFF) -o $@ $(LIB)
+
+#$(PORTAL_EXEC): $(EXEC)
+
+$(PORTAL_EXEC): $(PORTAL_CXX_OBJS)
+	@echo 'start building  $(notdir $@) ...'
+	$(BUILDSYMBOL)
+	$(CXX) $(LDFLAG) -fvisibility=hidden $(addprefix $(OBJ_DIR)/,$(notdir $^)) $(EXSTUFF) -o $@ -shared -L$(MAKE_DIR) -l$(PROJ_NAME)
+
+$(EXEC_TEST): $(CXX_OBJS)
+	@echo 'start building  $(notdir $@) ...'
+	$(BUILDSYMBOL)
+	$(CXX) $(LDFLAG) $(addprefix $(OBJ_DIR)/,$(notdir $^)) $(EXSTUFF) -o $@ $(LIB)
+
+test: $(EXEC_TEST)
+	@echo 'start run test...'
+	@($(EXEC_TEST))
+
+%.o: %.cpp %.d
+	@echo 'start building $(notdir $@)...'
+	$(CXX) $(CXXFLAG) $< $(INCLUDE) -o $(OBJ_DIR)/$@
+
+%.opy: %.cpp %.dpy
+	@echo 'start building $(notdir $@)...'
+	$(CXX) $(CXXFLAG) `python3-config --cflags --ldflags` $< $(INCLUDE) -o $(OBJ_DIR)/$@
+
+$(OBJ_DIR)/%.d: %.cpp
+	@echo 'start building $(notdir $@)...'
+	$(CXX) $< $(INCLUDE) $(DEPFLAG) -o $@
+
+$(OBJ_DIR)/%.dpy: %.cpp
+	@echo 'start building $(notdir $@)...'
+	$(CXX) $< $(INCLUDE) $(DEPFLAG) `python3-config --cflags --ldflags` -o $@
+
+-include $(addprefix $(OBJ_DIR)/,$(CXX_DEPS))
+-include $(addprefix $(OBJ_DIR)/,$(PORTAL_CXX_DEPS))
+
+config: mkdir
+
+mkdir:
+	-@mkdir -p $(EXEC_DIR)
+	-@mkdir -p $(OBJ_DIR)
+	-@mkdir -p $(OBJ_TEST_DIR)
+	-@mkdir -p $(LOG_DIR)
+	-@mkdir -p $(RES_DIR)
+
+clean:
+	-rm $(OBJ_DIR)/* -rf
+	-rm $(EXEC)
+	-rm $(PORTAL_EXEC)
+
+cleantest:
+	-rm $(OBJ_DIR)/* -rf
+	-rm $(EXEC_TEST)
+	-rm $(PORTAL_EXEC)
+
+cleanall: clean
+	-rm $(LOG_DIR)/* -rf
+	-rm $(TAR_NAME)
+
+run:
+	$(EXEC)
+
+package:
+	-rm $(TAR_NAME)
+	tar czvf $(TAR_NAME) $(CONF_DIR) $(LIB_DIR) $(PY_DIR) activate.sh main.py service.py --exclude $(LIB_DIR)/.svn --exclude $(CONF_DIR)/.svn
+
+.PHONY: all config mkdir clean cleantest cleanall run package test

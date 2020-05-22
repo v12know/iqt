@@ -1,0 +1,99 @@
+{
+  /*ehhehe
+  ddd
+  aaa
+  */
+  "run_type": "SIM",//
+  //运行类型，`BACKTEST` 为回测，`SIM` 为模拟交易, `REAL` 为实盘交易，`COLLECT`为收集数据。
+  "start_date": "2017-11-20",
+  "future_starting_cash": 1000000,
+  //	"margin_multiplier": 1,
+  //	"available_cpu_num": 2,
+  /*ehhehe*/
+  "ctp": {
+    "event": {
+      "broker_id": "9999",
+      "user_id": "078201",
+      "password": "123456",
+      "address": "tcp://180.168.146.187:10031"//24hours
+      //			"address": "tcp://180.168.146.187:10010",//dianxin1
+//      "address": "tcp://180.168.146.187:10011"
+    },
+    "trade": {
+      //"collect_pattern": "pp|rb"
+      //run_type=collect时生效
+      "broker_id": "9999",
+      "user_id": "078201",
+      "password": "123456",
+      "address": "tcp://180.168.146.187:10030",//24hours
+      //			"address": "tcp://180.168.146.187:10000",//dianxin1
+//      "address": "tcp://180.168.146.187:10001",
+      "pub_resume_type": "restart", //restart, resume, quick
+      "priv_resume_type": "restart" //restart, resume, quick
+    }
+  },
+  "logger": {
+    "level": "tr",
+    "base_dir": "./log",
+    "def_name": "default",
+    "async_size": 4096,
+    "console_flag": true
+  },
+  "redis": {
+    ////		"pool_id": "txndb",
+    "host": "localhost",
+    "port": 6379,
+    "password": "",
+    "db": 1
+  },
+  "stgys": [
+    //		{
+    //			"valid_time_spans": "08:59:00~10:14:50,10:29:00~11:29:50,13:29:00~14:59:50,20:59:00~00:59:50",
+    //			"stgy_type": "single_grid",
+    //			"stgy_id": "single_grid_MA801",
+    //			"universe": ["MA801"],
+    //			"grid_vol": 1,
+    //			"open_spread": 10,
+    //			"close_spread": 10,
+    //			"close_today": true
+    //		}
+    {
+      "log_level": "trace",
+      "valid_time_spans": "08:59:00~10:14:50,10:29:00~11:29:50,13:29:00~14:59:50,20:59:00~00:59:50",
+      "stgy_type": "single_grid",
+      "stgy_id": "single_grid_rb1805",
+      "version": "20171226",
+      "universe": ["RB1805"],
+      "slots_pattern": "2*3,1*27",
+      "open_spread": 6,
+//      "close_spread": 6,
+      "close_today": true
+    },
+    {
+      "log_level": "trace",
+      "valid_time_spans": "08:59:00~10:14:50,10:29:00~11:29:50,13:29:00~14:59:50,20:59:00~00:59:50",
+      "stgy_type": "single_grid",
+      "stgy_id": "single_grid_ZC805",
+      "version": "20171226",
+      "universe": ["ZC1805"],
+      "slots_pattern": "2*3,1*27",
+      "open_spread": 1.2,
+//      "close_spread": 1.2,
+      "close_today": true
+    },
+    {
+      "log_level": "trace",
+      "valid_time_spans": "08:59:00~10:14:50,10:29:00~11:29:50,13:29:00~14:59:50,20:59:00~00:59:50",
+      "stgy_type": "single_grid",
+      "stgy_id": "single_grid_jm1805",
+      "version": "20171226",
+      "universe": ["JM1805"],
+      "slots_pattern": "2*3,1*27",
+      "open_spread": 7,
+//      "close_spread": 7,
+      "close_today": true
+    }
+  ]
+  //test
+}
+
